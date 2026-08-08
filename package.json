@@ -1,0 +1,14 @@
+{
+  "name": "xiaobu-memory-exporter",
+  "version": "0.1.0",
+  "description": "Local-first browser exporter for verified OPPO/ColorOS Xiaobu (AIMemory) official local backups.",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "serve": "python -m http.server 18766"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

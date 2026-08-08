@@ -1,0 +1,18 @@
+node_modules/
+.DS_Store
+Thumbs.db
+*.log
+
+# Never commit user backups, exports, attachments, or keys
+Backup/
+BreenoMemory/
+backup_config*.db
+cryto_key
+memory_page_*
+memory_collections_page_*
+memory_collection_mcr_page_*
+memory_attach_info_page_*
+file_backup.zip
+*_Export_*/
+private-data/
+real-backup/

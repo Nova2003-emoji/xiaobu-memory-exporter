@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="从 OPPO/ColorOS 官方小布记忆本地备份中，在浏览器本地解析并导出可搜索 HTML/JSON。">
+  <title>小布记忆导出助手</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <input class="hidden-input" id="backupFolder" name="backupFolder" type="file" data-role="folder-input" webkitdirectory multiple>
+
+  <section class="screen" data-screen="welcome">
+    <header class="site-header">
+      <a class="wordmark" href="./">小布记忆导出助手</a>
+      <nav>
+        <a href="#how">使用方法</a>
+        <a href="#privacy">隐私</a>
+        <a href="https://github.com/xiaosong123413-del/xiaobu-memory-exporter" target="_blank" rel="noreferrer">GitHub ↗</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-copy">
+          <div class="eyebrow">OFFICIAL BACKUP → LOCAL PARSE → OFFLINE HTML</div>
+          <h1>把小布记忆<br>带回你自己的电脑。</h1>
+          <p>从 ColorOS 官方本地备份开始，在浏览器里恢复记忆、合集与附件索引。无需 Root，不上传备份，不需要把私人数据交给任何服务器。</p>
+          <div class="hero-actions">
+            <button class="button primary" data-action="choose-folder">选择电脑上的备份文件夹</button>
+            <button class="button secondary" data-action="demo">先看合成 Demo</button>
+          </div>
+          <div class="privacy-line"><span class="privacy-dot"></span> 所有解析与解密仅发生在当前浏览器</div>
+        </div>
+        <div class="pipeline-card" aria-label="处理流程">
+          <div class="pipeline-step done"><span>01</span><div><strong>官方备份</strong><small>ColorOS Backup & Restore</small></div></div>
+          <i></i>
+          <div class="pipeline-step"><span>02</span><div><strong>本地解密</strong><small>AES-CBC + AES-GCM</small></div></div>
+          <i></i>
+          <div class="pipeline-step"><span>03</span><div><strong>恢复关系</strong><small>记忆 · 合集 · 附件索引</small></div></div>
+          <i></i>
+          <div class="pipeline-step"><span>04</span><div><strong>离线资料库</strong><small>HTML + JSON</small></div></div>
+        </div>
+      </section>
+
+      <section class="how" id="how">
+        <div class="section-heading"><span>HOW IT WORKS</span><h2>从手机备份开始，四步完成</h2><p>这个网页不直接读取手机。先用 OPPO 官方功能创建本地备份，再把时间戳文件夹复制到电脑。</p></div>
+        <div class="steps-grid">
+          <article><b>1</b><h3>创建官方本地备份</h3><p>手机进入「备份与迁移 → 本地备份 → 新建备份」，只勾选系统偏好设置里的「小布记忆」。</p></article>
+          <article><b>2</b><h3>复制时间戳文件夹</h3><p>把 <code>Backup/Data/2026-xx-xx-xxxxxx</code> 这一层完整复制到电脑，不要只复制 BreenoMemory。</p></article>
+          <article><b>3</b><h3>网页选择文件夹</h3><p>点击上方按钮选择刚复制的时间戳文件夹。网页先检查版本与结构，兼容才会继续。</p></article>
+          <article><b>4</b><h3>本地解析并导出</h3><p>浏览、搜索、筛选后，可导出标准 JSON 或一个双击即可查看的单文件离线 HTML。</p></article>
+        </div>
+        <div class="path-callout">
+          <div><small>ColorOS 12+ 常见本地备份位置</small><code>内部存储/Android/data/com.coloros.backuprestore/Backup/Data</code></div>
+          <button class="button tertiary" data-role="copy-path">复制路径</button>
+        </div>
+      </section>
+
+      <section class="compatibility">
+        <div class="section-heading"><span>COMPATIBILITY</span><h2>只对实际验证过的组合负责</h2></div>
+        <div class="compat-table">
+          <div><span>AIMemory</span><strong>16.10.1</strong></div>
+          <div><span>database_version</span><strong>46</strong></div>
+          <div><span>Android</span><strong>16</strong></div>
+          <div><span>ColorOS internal</span><strong>38 / ColorOS 16.1</strong></div>
+          <div><span>Backup & Restore</span><strong>16.14.2</strong></div>
+          <div><span>验证状态</span><strong class="verified">✓ 已端到端验证</strong></div>
+        </div>
+        <p class="compat-note">其他版本不会被“硬解”。检测到差异时会停止并提示当前字段，避免把未知格式误当成成功结果。</p>
+      </section>
+
+      <section class="privacy" id="privacy">
+        <div class="privacy-copy"><span>LOCAL FIRST</span><h2>备份内容不会经过项目服务器</h2><p>选择文件夹后，JavaScript 直接读取你授权的本地文件。密钥只存在于当前页面内存中，导出的 JSON/HTML 不写入 AES 密钥。</p></div>
+        <div class="privacy-cards">
+          <div><strong>0</strong><span>上传接口</span></div>
+          <div><strong>0</strong><span>云端解密</span></div>
+          <div><strong>0</strong><span>真实用户数据随项目发布</span></div>
+        </div>
+      </section>
+    </main>
+
+    <footer>非 OPPO 官方产品。项目仅处理用户自己创建并选择的本地备份。</footer>
+  </section>
+
+  <section class="screen inspect-screen" data-screen="inspect" hidden>
+    <header class="compact-header"><button class="back-link" data-role="inspect-back">← 返回</button><strong>备份兼容性检查</strong><span>本地处理</span></header>
+    <main class="inspect-main">
+      <div class="inspect-heading"><div class="eyebrow">BACKUP INSPECTION</div><h1 data-role="inspect-title">正在检查备份…</h1><p>只有备份结构与已验证版本都匹配时，解析按钮才会启用。</p></div>
+      <div data-role="inspect-body"></div>
+      <div class="notice danger global-error" data-role="error" hidden></div>
+      <div class="inspect-actions">
+        <button class="button secondary" data-action="choose-folder">重新选择</button>
+        <button class="button primary" data-role="parse-button" disabled>开始本地解析</button>
+      </div>
+    </main>
+  </section>
+
+  <section class="screen progress-screen" data-screen="progress" hidden>
+    <main class="progress-main">
+      <div class="progress-lock">LOCAL</div>
+      <div class="eyebrow">DECRYPTING LOCALLY</div>
+      <h1 data-role="progress-text">正在恢复加密密钥…</h1>
+      <p data-role="progress-phase">所有解密均在本地完成</p>
+      <div class="progress-track"><i data-role="progress-bar"></i></div>
+      <div class="progress-privacy">请保持此页面打开。过程中不会修改原始备份文件。</div>
+    </main>
+  </section>
+
+  <section class="screen library-screen" data-screen="library" hidden>
+    <div class="library-toolbar">
+      <div><strong>已解析记忆库</strong><span data-role="library-demo-badge" hidden>合成 Demo</span></div>
+      <div>
+        <button class="button tertiary" data-role="export-json" disabled>导出 JSON</button>
+        <button class="button primary compact" data-role="export-html" disabled>导出单文件 HTML</button>
+      </div>
+    </div>
+    <div data-role="viewer-root" class="viewer-root"></div>
+  </section>
+
+  <script src="src/crypto.js"></script>
+  <script src="src/zip.js"></script>
+  <script src="src/parser.js"></script>
+  <script src="src/demo.js"></script>
+  <script src="src/viewer.js"></script>
+  <script src="src/app.js"></script>
+</body>
+</html>
