@@ -40,9 +40,11 @@ GitHub Pages：
 | AIMemory `database_version` | `46` |
 | Android | `16` |
 | ColorOS internal | `38`（测试设备对应 ColorOS 16.1） |
-| Backup & Restore / Clone Phone (`com.coloros.backuprestore`) | `16.14.2` |
+| Backup & Restore / Clone Phone (`com.coloros.backuprestore`) | `16.14.2`（仅记录，见下） |
 
 > `16.11.4` 的实测规模：725 条记忆、18 个合集、2979 条合集关系、2196 条附件记录，解析耗时约 5 秒。
+
+表中前四项会逐项自动对照当前备份。最后一项 `Backup & Restore` **不会被自动校验** —— `app_info.json` 中不存在该字段，工具无法读取，只能靠用户自行确认。若你的 Backup & Restore 版本与此不同，通常不影响解析结果。
 
 **版本不匹配不会阻止解析。** 工具会在检查页把当前版本与上表逐项对照并标出差异，仅作参考。
 
@@ -80,9 +82,14 @@ ColorOS 官方本地备份
         ├─ memory_collection_mcr_page_*
         │      └─ collectionId ↔ memoryId 真实关系
         │
+        ├─ memory_attach_info_page_*
+        │      └─ 附件元数据，与 memory_page_* 内嵌的附件合并去重
+        │
         └─ BreenoMemory/files/file_backup.zip
                └─ Attachment / DataCenter / MemoryCache / ...
 ```
+
+备份里还可能存在当前工具不读取的页面，例如 `bills_page_*` 和 `memory_deepseek_*`。它们不影响记忆解析，导出结果中不包含这些内容。
 
 ### ColorOS 外层
 
@@ -121,6 +128,27 @@ MemoryCache/...
 
 支持 ZIP `stored`（method 0）和 `deflate`（method 8）。Deflate 预览依赖 Chromium 的 `DecompressionStream('deflate-raw')`。
 
+`resolve()` 可识别以下路径形式：
+
+```text
+Attachment/photo.png                                        直接命中
+/storage/emulated/0/.../com.oplus.aimemory/files/Attachment/x  取 /files/ 之后的后缀
+content://com.oplus.aimemory.dataCenterFileProvider/DataCenter/x  去掉 provider 前缀
+```
+
+### 附件的已知限制
+
+实测一份 970 MB 的 `file_backup.zip`（2292 条中央目录记录）：
+
+- 2196 条附件记录中，725 条的 `path` 与 `uri` **均为空**，是占位记录而非真实文件引用。
+- 剩余 1471 条有真实路径引用的附件中，1464 条能在 ZIP 中定位（约 **99.5%**）。
+- 未能定位的条目会在详情页显示「在附件 ZIP 中未找到对应文件」，不影响其余数据。
+
+其他限制：
+
+- **不支持 ZIP64。** 条目数超过 65535 或单文件超过 4 GB 的 ZIP 无法索引。
+- **单条解压无大小上限。** 点击预览会把该条目完整解压进内存，超大视频附件可能耗尽内存。此时请改用「保存」链接下载，或先用系统工具单独解压该 ZIP。
+
 导出的 **单文件 HTML 默认不嵌入附件二进制**，避免一个 HTML 膨胀到数百 MB；它保留文本、摘要、标签、合集和元数据。
 
 ## 本地开发
@@ -139,6 +167,30 @@ http://127.0.0.1:18766/
 ```
 
 测试全部使用合成密钥、合成加密页和合成记忆，不依赖私人备份。
+
+`npm run serve` 使用 `python -m http.server 18766`。若系统没有 Python，可用任意静态服务器替代，例如：
+
+```bash
+npx serve -l 18766
+```
+
+## 常见问题
+
+**「没有识别到完整的小布记忆官方备份，缺少：…」**
+
+选择目录层级选错了。需要选中 `Backup/Data/<时间戳>/` 这一层，它同时包含 `backup_config_new.db` 和 `BreenoMemory/`。只选 `BreenoMemory/` 会缺少解密外层所需的参数。
+
+**「AIMemory AES-GCM 认证失败；页文件、密钥或版本不匹配。」**
+
+这说明确实读到了加密页，但用当前解出的密钥打不开它。可能是 `backup_config_new.db` 中存在多组历史 `EncryptInfo`（多次本地备份后 SQLite 空闲页会残留旧值），工具无法唯一确定该用哪一组；也可能是该备份的格式或密钥派生方式与当前实现不同。工具在这两种情况下都会拒绝猜测并报错，不会输出错误数据。请附上不含私人内容的 `app_info.json` 版本字段与目录结构提交 issue。
+
+**点击「导出 JSON / 导出单文件 HTML」没有反应，或下载到的文件打不开**
+
+某些下载管理器（如 IDM）的浏览器扩展会拦截页面触发的下载。工具本身不发起任何网络请求，导出走的是浏览器本地 `Blob` 下载。遇到这种情况，在该软件设置中把 `localhost` / `127.0.0.1` 加入不接管的列表，或临时关闭其浏览器集成。
+
+**提示需要最新版 Chrome / Edge**
+
+附件预览依赖 `DecompressionStream('deflate-raw')`，解密依赖 Web Crypto 的 `AES-GCM` / `HMAC`。Chrome 103+、Firefox 113+、Safari 16.4+ 均可满足；更旧的浏览器能解析记忆文本，但无法预览 deflate 附件。本项目的测试与实测均在 Chromium 上完成。
 
 ## 项目结构
 
