@@ -67,10 +67,10 @@
         <span>${check.ok ? '✓' : '×'}</span>
         <strong>${escapeHtml(check.name)}</strong>
         <em>${escapeHtml(check.actual || '未知')}</em>
-        <small>${check.ok ? '已验证' : `当前工具只验证 ${escapeHtml(check.expected)}`}</small>
+        <small>${check.ok ? '与参考版本一致' : `参考版本 ${escapeHtml(check.expected)}`}</small>
       </div>`).join('');
 
-    $('[data-role="inspect-title"]').textContent = inspection.compatible ? '发现可解析的小布记忆备份' : '发现小布记忆备份，但版本尚未验证';
+    $('[data-role="inspect-title"]').textContent = inspection.matchesReference ? '发现可解析的小布记忆备份' : '发现小布记忆备份，可继续解析';
     $('[data-role="inspect-body"]').innerHTML = `
       <div class="inspect-grid">
         <div class="inspect-card"><span>记忆页</span><strong>${fileInfo.memoryPages.length}</strong><small>memory_page_*</small></div>
@@ -84,13 +84,13 @@
         <span>device type</span><strong>${escapeHtml(info.device_type || '—')}</strong>
         <span>备份数据不会上传</span><strong>仅当前浏览器读取</strong>
       </div>
-      ${inspection.compatible ? '<div class="notice success">版本与当前已验证组合一致，可以开始本地解析。</div>' : '<div class="notice warning">为避免误解析，未知版本默认停止。可以在 GitHub 提交 issue 帮助适配。</div>'}
+      ${inspection.matchesReference ? '<div class="notice success">版本与已验证组合一致，可以开始本地解析。</div>' : '<div class="notice warning">版本与已验证组合不同，但仍可尝试解析。若格式或密钥不匹配，解密会明确报错而不会产出错误数据。可以在 GitHub 提交 issue 帮助适配。</div>'}
     `;
-    $('[data-role="parse-button"]').disabled = !inspection.compatible;
+    $('[data-role="parse-button"]').disabled = false;
   }
 
   async function startParse() {
-    if (!selectedFiles || !inspection?.compatible) return;
+    if (!selectedFiles || !inspection) return;
     setError('');
     showScreen('progress');
     const progressBar = $('[data-role="progress-bar"]');

@@ -72,9 +72,16 @@ test('EncryptInfo scanner extracts only an unambiguous random/iv pair', () => {
   assert.deepEqual(XiaobuParser.extractEncryptInfo(bytes.buffer), { random, iv });
 });
 
-test('full synthetic backup parses memories, collections and true collection relations', async () => {
-  const random = 'Z9y8X7w6V5u4T3s2R1q0P9o8N7m6L5k4';
-  const ivText = '-8123456789012345678';
+const SYNTHETIC_RANDOM = 'Z9y8X7w6V5u4T3s2R1q0P9o8N7m6L5k4';
+const SYNTHETIC_IV = '-8123456789012345678';
+
+const BASE_APP_INFO = {
+  android_version: '16', app_version: '16.10.1', coloros_version: '38', database_version: 46, flavor: 'domestic', device_type: 'phone'
+};
+
+async function buildSyntheticBackup(appInfoOverrides = {}) {
+  const random = SYNTHETIC_RANDOM;
+  const ivText = SYNTHETIC_IV;
   const rawKey = Uint8Array.from({ length: 32 }, (_, index) => (index * 11 + 5) & 255);
   const wrapped = await makeWrappedKey(random, ivText, rawKey);
 
@@ -97,21 +104,81 @@ test('full synthetic backup parses memories, collections and true collection rel
   const rawCollections = [{ collectionId: 'c-001', collectionName: '合成合集', collectionDescription: '测试合集' }];
   const rawRelations = [{ collectionId: 'c-001', memoryId: 'm-001' }];
 
-  const files = [
+  return [
     new VirtualFile('2026-01-01-120000/backup_config_new.db', encoder.encode(`db${random}${ivText}tail`)),
-    new VirtualFile('2026-01-01-120000/BreenoMemory/app_info.json', JSON.stringify({
-      android_version: '16', app_version: '16.10.1', coloros_version: '38', database_version: 46, flavor: 'domestic', device_type: 'phone'
-    })),
+    new VirtualFile('2026-01-01-120000/BreenoMemory/app_info.json', JSON.stringify({ ...BASE_APP_INFO, ...appInfoOverrides })),
     new VirtualFile('2026-01-01-120000/BreenoMemory/BreenoMemorySecure/cryto_key', wrapped),
     new VirtualFile('2026-01-01-120000/BreenoMemory/database/memory_page_0', await makePage(rawMemories, rawKey, 1)),
     new VirtualFile('2026-01-01-120000/BreenoMemory/database/memory_collections_page_1', await makePage(rawCollections, rawKey, 2)),
     new VirtualFile('2026-01-01-120000/BreenoMemory/database/memory_collection_mcr_page_1', await makePage(rawRelations, rawKey, 3))
   ];
+}
 
-  const parsed = await XiaobuParser.parseBackup(files);
+test('full synthetic backup parses memories, collections and true collection relations', async () => {
+  const parsed = await XiaobuParser.parseBackup(await buildSyntheticBackup());
   assert.equal(parsed.memories.length, 2);
   assert.equal(parsed.collections.length, 1);
   assert.deepEqual(parsed.memories.find((memory) => memory.memoryId === 'm-001').collectionNames, ['合成合集']);
   assert.equal(parsed.memories.find((memory) => memory.memoryId === 'm-001').title, '合成记忆一');
   assert.equal(parsed.meta.stats.memories, 2);
+  assert.equal(parsed.meta.matchesReferenceVersions, true);
+});
+
+test('version mismatch is reported but never blocks parsing', async () => {
+  const files = await buildSyntheticBackup({ app_version: '17.2.0', database_version: 51, coloros_version: '41' });
+  const inspection = await XiaobuParser.inspectBackup(files);
+
+  assert.equal(inspection.matchesReference, false);
+  assert.deepEqual(
+    inspection.checks.filter((item) => !item.ok).map((item) => item.name),
+    ['AIMemory', 'database_version', 'ColorOS internal']
+  );
+
+  const parsed = await XiaobuParser.parseBackup(files);
+  assert.equal(parsed.memories.length, 2);
+  assert.equal(parsed.memories.find((memory) => memory.memoryId === 'm-001').title, '合成记忆一');
+  assert.equal(parsed.meta.matchesReferenceVersions, false);
+});
+
+test('every reference version in the list is accepted, not just the first', async () => {
+  const declared = XiaobuParser.REFERENCE_VERSIONS.appVersion;
+  assert.ok(Array.isArray(declared) && declared.length > 1, '应声明多个已验证版本');
+
+  for (const version of declared) {
+    const files = await buildSyntheticBackup({ app_version: version });
+    const inspection = await XiaobuParser.inspectBackup(files);
+    assert.equal(inspection.matchesReference, true, `${version} 应被接受`);
+    const check = inspection.checks.find((item) => item.name === 'AIMemory');
+    assert.equal(check.ok, true);
+    assert.equal(check.expected, declared.join(' / '));
+  }
+});
+
+test('a listed version still fails loudly when the page key is wrong', async () => {
+  // 兼容性放宽不等于放弃校验：格式或密钥不对时必须明确报错。
+  const files = await buildSyntheticBackup({ app_version: '16.11.4' });
+  assert.equal((await XiaobuParser.inspectBackup(files)).matchesReference, true);
+
+  const wrongKey = Uint8Array.from({ length: 32 }, (_, index) => (index * 13 + 41) & 255);
+  const idx = files.findIndex((file) => file.webkitRelativePath.endsWith('cryto_key'));
+  files[idx] = new VirtualFile(
+    files[idx].webkitRelativePath,
+    await makeWrappedKey(SYNTHETIC_RANDOM, SYNTHETIC_IV, wrongKey)
+  );
+
+  await assert.rejects(() => XiaobuParser.parseBackup(files), /AES-GCM 认证失败/);
+});
+
+test('a wrong AES key still fails loudly instead of producing garbage', async () => {
+  const files = await buildSyntheticBackup();
+  // 保持外层 random/iv 不变（否则会在 CBC padding 阶段就失败），只替换被包裹的 AIMemory 密钥，
+  // 这样才能验证内层 GCM 认证确实会拦住错误密钥。
+  const wrongKey = Uint8Array.from({ length: 32 }, (_, index) => (index * 13 + 41) & 255);
+  const idx = files.findIndex((file) => file.webkitRelativePath.endsWith('cryto_key'));
+  files[idx] = new VirtualFile(
+    files[idx].webkitRelativePath,
+    await makeWrappedKey(SYNTHETIC_RANDOM, SYNTHETIC_IV, wrongKey)
+  );
+
+  await assert.rejects(() => XiaobuParser.parseBackup(files), /AES-GCM 认证失败/);
 });

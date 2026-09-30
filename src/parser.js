@@ -1,13 +1,18 @@
 (function (global) {
   'use strict';
 
-  const VERIFIED = {
-    appVersion: '16.10.1',
-    databaseVersion: 46,
-    androidVersion: '16',
-    colorosVersion: '38',
-    backupRestoreVersion: '16.14.2'
+  // 仅作为参考信息展示，不参与解析门禁。版本不同不代表格式不兼容：AIMemory 每页都由
+  // AES-GCM authentication tag 保护，密钥或格式不匹配会明确抛错，不会静默产出错误数据。
+  // 每项列出所有已端到端验证过的取值。
+  const REFERENCE_VERSIONS = {
+    appVersion: ['16.10.1', '16.11.4'],
+    databaseVersion: [46],
+    androidVersion: ['16'],
+    colorosVersion: ['38'],
+    backupRestoreVersion: ['16.14.2']
   };
+
+  const formatExpected = (expected) => (Array.isArray(expected) ? expected.join(' / ') : String(expected));
 
   function normalizePath(path) {
     return String(path || '').replace(/\\/g, '/').replace(/^\.\//, '');
@@ -85,7 +90,9 @@
   }
 
   function compareVersion(value, expected) {
-    return String(value ?? '') === String(expected);
+    const actual = String(value ?? '');
+    const accepted = Array.isArray(expected) ? expected : [expected];
+    return accepted.map(String).includes(actual);
   }
 
   async function inspectBackup(fileList) {
@@ -110,17 +117,17 @@
 
     const appInfo = await readJsonFile(appInfoFile, 'app_info.json');
     const checks = [
-      ['AIMemory', appInfo.app_version, VERIFIED.appVersion],
-      ['database_version', appInfo.database_version, VERIFIED.databaseVersion],
-      ['Android', appInfo.android_version, VERIFIED.androidVersion],
-      ['ColorOS internal', appInfo.coloros_version, VERIFIED.colorosVersion]
-    ].map(([name, actual, expected]) => ({ name, actual: String(actual ?? ''), expected: String(expected), ok: compareVersion(actual, expected) }));
+      ['AIMemory', appInfo.app_version, REFERENCE_VERSIONS.appVersion],
+      ['database_version', appInfo.database_version, REFERENCE_VERSIONS.databaseVersion],
+      ['Android', appInfo.android_version, REFERENCE_VERSIONS.androidVersion],
+      ['ColorOS internal', appInfo.coloros_version, REFERENCE_VERSIONS.colorosVersion]
+    ].map(([name, actual, expected]) => ({ name, actual: String(actual ?? ''), expected: formatExpected(expected), ok: compareVersion(actual, expected) }));
 
     return {
       index,
       appInfo,
       checks,
-      compatible: checks.every((item) => item.ok),
+      matchesReference: checks.every((item) => item.ok),
       files: {
         appInfoFile,
         configFile,
@@ -132,14 +139,6 @@
         zipFile
       }
     };
-  }
-
-  function ensureVerified(inspection) {
-    if (inspection.compatible) return;
-    const differences = inspection.checks
-      .filter((item) => !item.ok)
-      .map((item) => `${item.name}: 当前 ${item.actual || '未知'}，已验证 ${item.expected}`);
-    throw new Error('当前备份版本尚未验证，已停止解析。' + differences.join('；'));
   }
 
   async function decryptJsonPages(entries, cryptoKey, label, onProgress, progressState) {
@@ -311,7 +310,6 @@
   async function parseBackup(fileList, onProgress) {
     if (!global.XiaobuCrypto) throw new Error('crypto.js 尚未加载。');
     const inspection = await inspectBackup(fileList);
-    ensureVerified(inspection);
     const { files, appInfo } = inspection;
 
     const configBuffer = await files.configFile.arrayBuffer();
@@ -344,7 +342,8 @@
         format: 'xiaobu-memory-export-v1',
         parsedAt: new Date().toISOString(),
         appInfo,
-        verifiedAgainst: VERIFIED,
+        referenceVersions: REFERENCE_VERSIONS,
+        matchesReferenceVersions: inspection.matchesReference,
         stats: {
           memories: uniqueMemories.length,
           collections: uniqueCollections.length,
@@ -361,7 +360,8 @@
   }
 
   const api = {
-    VERIFIED,
+    REFERENCE_VERSIONS,
+    formatExpected,
     buildFileIndex,
     extractEncryptInfo,
     inspectBackup,

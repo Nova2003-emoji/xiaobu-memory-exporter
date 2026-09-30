@@ -49,7 +49,7 @@
         <div class="steps-grid">
           <article><b>1</b><h3>创建官方本地备份</h3><p>手机进入「备份与迁移 → 本地备份 → 新建备份」，只勾选系统偏好设置里的「小布记忆」。</p></article>
           <article><b>2</b><h3>复制时间戳文件夹</h3><p>把 <code>Backup/Data/2026-xx-xx-xxxxxx</code> 这一层完整复制到电脑，不要只复制 BreenoMemory。</p></article>
-          <article><b>3</b><h3>网页选择文件夹</h3><p>点击上方按钮选择刚复制的时间戳文件夹。网页先检查版本与结构，兼容才会继续。</p></article>
+          <article><b>3</b><h3>网页选择文件夹</h3><p>点击上方按钮选择刚复制的时间戳文件夹。网页先检查目录结构是否完整，确认后即可解析。</p></article>
           <article><b>4</b><h3>本地解析并导出</h3><p>浏览、搜索、筛选后，可导出标准 JSON 或一个双击即可查看的单文件离线 HTML。</p></article>
         </div>
         <div class="path-callout">
@@ -59,16 +59,16 @@
       </section>
 
       <section class="compatibility">
-        <div class="section-heading"><span>COMPATIBILITY</span><h2>只对实际验证过的组合负责</h2></div>
+        <div class="section-heading"><span>COMPATIBILITY</span><h2>已端到端验证的版本组合</h2></div>
         <div class="compat-table">
-          <div><span>AIMemory</span><strong>16.10.1</strong></div>
+          <div><span>AIMemory</span><strong>16.10.1 / 16.11.4</strong></div>
           <div><span>database_version</span><strong>46</strong></div>
           <div><span>Android</span><strong>16</strong></div>
           <div><span>ColorOS internal</span><strong>38 / ColorOS 16.1</strong></div>
-          <div><span>Backup & Restore</span><strong>16.14.2</strong></div>
+          <div><span>Backup &amp; Restore</span><strong>16.14.2</strong></div>
           <div><span>验证状态</span><strong class="verified">✓ 已端到端验证</strong></div>
         </div>
-        <p class="compat-note">其他版本不会被“硬解”。检测到差异时会停止并提示当前字段，避免把未知格式误当成成功结果。</p>
+        <p class="compat-note">其他版本不会被“硬解”，但也不会被直接拒绝：每个记忆页都由 AES-GCM 认证标签保护，密钥或格式不匹配时会明确报错，不会把乱码当成成功结果。欢迎提交 issue，附上 <strong>不含私人内容</strong> 的 <code>app_info.json</code> 版本字段用于适配。</p>
       </section>
 
       <section class="privacy" id="privacy">
@@ -87,7 +87,7 @@
   <section class="screen inspect-screen" data-screen="inspect" hidden>
     <header class="compact-header"><button class="back-link" data-role="inspect-back">← 返回</button><strong>备份兼容性检查</strong><span>本地处理</span></header>
     <main class="inspect-main">
-      <div class="inspect-heading"><div class="eyebrow">BACKUP INSPECTION</div><h1 data-role="inspect-title">正在检查备份…</h1><p>只有备份结构与已验证版本都匹配时，解析按钮才会启用。</p></div>
+      <div class="inspect-heading"><div class="eyebrow">BACKUP INSPECTION</div><h1 data-role="inspect-title">正在检查备份…</h1><p>工具会先检查备份结构是否完整。版本只作参考，不阻止解析。</p></div>
       <div data-role="inspect-body"></div>
       <div class="notice danger global-error" data-role="error" hidden></div>
       <div class="inspect-actions">
